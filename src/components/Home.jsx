@@ -15,11 +15,13 @@ import {
   Menu,
   X,
   FileUp,
+  Loader2,
 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 
 const Home = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const tabs = [
     "View all",
@@ -40,6 +42,12 @@ const Home = () => {
 
   const [showModal, setShowModal] = useState(false);
   const [imagePreview, setImagePreview] = useState("");
+  const [file, setFile] = useState();
+  const onDrop = useCallback((acceptedFiles) => {
+    setFile(acceptedFiles[0]);
+    setImagePreview(URL.createObjectURL(acceptedFiles[0]));
+  }, []);
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -64,38 +72,50 @@ const Home = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+
+    if (!file) {
+      alert("You need to add a blog photo");
+      setLoading(false);
+
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    const getPhotoKey = await fetch("https://blog-be-v2.onrender.com/upload", {
+      method: "POST",
+      body: formData,
+    });
+    const getPhotoKeyResponse = await getPhotoKey.json();
+    if (!getPhotoKeyResponse.success) {
+      alert("There was an error uploading your photo. please try again.");
+      setLoading(false);
+      return;
+    }
 
     const newPost = {
-      id: Date.now(),
-      image: form.image,
       category: form.category,
       title: form.title,
       content: form.content,
-      author: "Amber Laurent",
-      date: new Date().toLocaleDateString(),
-      profilePic: "https://randomuser.me/api/portraits/women/44.jpg",
+      photoKey: getPhotoKeyResponse.key,
     };
-
     try {
       const response = await fetch("https://blog-be-v2.onrender.com/blog", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newPost),
       });
-
       const savedPost = await response.json();
-      setPosts((prev) => [savedPost, ...prev]);
+
       setForm({ photo: "", title: "", content: "" });
       setShowModal(false);
+      setLoading(false);
     } catch (error) {
       console.error("Error saving post:", error);
+      setLoading(false);
     }
   };
-  const onDrop = useCallback((acceptedFiles) => {
-    console.log(acceptedFiles);
-    setImagePreview(URL.createObjectURL(acceptedFiles[0]));
-  }, []);
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   return (
     <div className="bg-gray-900 min-h-screen text-gray-200">
@@ -429,9 +449,7 @@ const Home = () => {
                           />
                         )}
                       </div>
-                      <div>
-                       
-                      </div>
+                      <div></div>
 
                       <div>
                         <input
@@ -440,6 +458,17 @@ const Home = () => {
                           value={form.title}
                           onChange={handleChange}
                           placeholder="Title"
+                          className="w-full px-4 py-2 border border-gray-600 rounded-lg text-gray-200 focus:border-gray-500 focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="text"
+                          name="category"
+                          value={form.category}
+                          onChange={handleChange}
+                          placeholder="Category"
                           className="w-full px-4 py-2 border border-gray-600 rounded-lg text-gray-200 focus:border-gray-500 focus:outline-none"
                           required
                         />
@@ -459,8 +488,12 @@ const Home = () => {
 
                       <button
                         type="submit"
+                        disabled={loading}
                         className="w-full py-2 border border-gray-600 text-gray-200 rounded-md hover:bg-gray-700 hover:text-gray-100 transition"
                       >
+                        {loading && (
+                          <Loader2 className="animate-spin h-6 w-7" />
+                        )}{" "}
                         Post
                       </button>
                     </form>
@@ -480,7 +513,7 @@ const Home = () => {
                   <img
                     src={post.photo}
                     alt="Post"
-                    className="rounded-2xl w-full"
+                    className="rounded-2xl w-full h-64 object-cover"
                   />
                 </div>
 
