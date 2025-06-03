@@ -107,7 +107,7 @@ const Home = () => {
         body: JSON.stringify(newPost),
       });
       const savedPost = await response.json();
-
+      setPosts((prev) => [savedPost, ...prev]);
       setForm({ photo: "", title: "", content: "" });
       setShowModal(false);
       setLoading(false);
@@ -488,7 +488,6 @@ const Home = () => {
 
                       <button
                         type="submit"
-                        disabled={loading}
                         className="w-full py-2 border border-gray-600 text-gray-200 rounded-md hover:bg-gray-700 hover:text-gray-100 transition"
                       >
                         {loading && (
